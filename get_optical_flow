@@ -1,0 +1,88 @@
+#coding: utf-8
+import os
+import numpy as np
+import cv2
+from glob import glob
+
+_IMAGE_SIZE = 256
+
+def cal_for_frames(video_path):
+    frames = glob(os.path.join(video_path, '*.jpg'))
+    frames.sort()
+
+    flow = []
+    prev = cv2.imread(frames[0])
+    prev = cv2.cvtColor(prev, cv2.COLOR_BGR2GRAY)
+    for i, frame_curr in enumerate(frames):
+        curr = cv2.imread(frame_curr)
+        curr = cv2.cvtColor(curr, cv2.COLOR_BGR2GRAY)
+        tmp_flow = compute_TVL1(prev, curr)
+        flow.append(tmp_flow)
+        prev = curr
+
+    return flow
+
+def compute_TVL1(prev, curr, bound=15):
+    """Compute the TV-L1 optical flow."""
+    TVL1 = cv2.DualTVL1OpticalFlow_create()
+    flow = TVL1.calc(prev, curr, None)
+    assert flow.dtype == np.float32
+
+    flow = (flow + bound) * (255.0 / (2*bound))
+    flow = np.round(flow).astype(int)
+    flow[flow >= 255] = 255
+    flow[flow <= 0] = 0
+
+    return flow
+    
+def save_flow(video_flows, flow_path):
+    for i, flow in enumerate(video_flows):
+        cv2.imwrite(os.path.join(flow_path.format('u'), "{:06d}.jpg".format(i)),
+                    flow[:, :, 0])
+        cv2.imwrite(os.path.join(flow_path.format('v'), "{:06d}.jpg".format(i)),
+                    flow[:, :, 1])
+
+def extract_flow(video_path,flow_path):
+    flow = cal_for_frames(video_path)
+    save_flow(flow, flow_path)
+    print('complete:' + flow_path)
+    return
+
+
+if __name__ =='__main__':
+
+    #video_paths="E:/vs-code/video-to-frames/output"
+    #flow_paths="E:/vs-code/video-to-frames/optical_flow"
+    #video_lengths = 164 
+
+    #extract_flow(video_paths, flow_paths)
+    root_path = "F:/hmdb_test_pro"
+    flow_paths = "F:/hmdb_test_optical_flow"
+    for frames_dir in os.listdir(root_path):
+    	frames_path = root_path + '/' + frames_dir
+    	flow_path = flow_paths + '/' + frames_dir
+    	#print(flow_path)
+    	isExists=os.path.exists(flow_path)
+    	if not isExists:
+        		os.makedirs(flow_path)
+    	extract_flow(frames_path, flow_path)
+    	print(frames_dir + "has Done!")
+    print("All videos has Done！！！")
+    	#print(frames_path)
+    	#print(frames_dir)
+    """i = 0
+    for root, dirs, files in os.walk(root_path):
+    	if files:
+    		#print(files)
+    		flow_path = flow_paths  + '/' + str(i)
+    		i += 1
+    		isExists=os.path.exists(flow_path)
+    		if not isExists:
+        		os.makedirs(flow_path)
+    		#print(flow_path)
+    		#extract_flow(root, flow_path)
+    		print("has Done!")
+    print("Optical Flow extract done!!!")"""
+    	#print(root)
+    	#print(files)
+    	#extract_flow(video_paths, flow_paths)
